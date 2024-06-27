@@ -1,0 +1,13 @@
+[package]
+name = "mooncats"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+itertools = "0.13.0"
+nonempty = { version = "0.10.0", features = ["serde", "serialize"] }
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.118"
+url = { version = "2.5.2", features = ["serde"] }
