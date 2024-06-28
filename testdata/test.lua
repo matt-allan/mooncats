@@ -11,3 +11,10 @@ global_table.set_field = 123
 ---@param x integer
 ---@return integer
 function global_table:set_method(x) end
+
+---@class AClass
+---@field foo string
+local AClass = {}
+
+---Does stuff
+function AClass:do_stuff() end

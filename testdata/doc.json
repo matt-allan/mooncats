@@ -2,6 +2,67 @@
     {
         "defines": [
             {
+                "file": "file:///Users/matt/Code/mooncats/./testdata/test.lua",
+                "finish": 140016,
+                "start": 140010,
+                "type": "doc.class"
+            }
+        ],
+        "fields": [
+            {
+                "desc": "Does stuff",
+                "extends": {
+                    "args": [
+                        {
+                            "finish": 190008,
+                            "name": "self",
+                            "start": 190008,
+                            "type": "self",
+                            "view": "AClass"
+                        }
+                    ],
+                    "desc": "Does stuff",
+                    "finish": 190030,
+                    "rawdesc": "Does stuff",
+                    "start": 190000,
+                    "type": "function",
+                    "view": "(method) AClass:do_stuff()"
+                },
+                "file": "file:///Users/matt/Code/mooncats/./testdata/test.lua",
+                "finish": 190024,
+                "name": "do_stuff",
+                "rawdesc": "Does stuff",
+                "start": 190009,
+                "type": "setmethod"
+            },
+            {
+                "extends": {
+                    "finish": 150020,
+                    "start": 150014,
+                    "type": "doc.type",
+                    "types": [
+                        {
+                            "finish": 150020,
+                            "start": 150014,
+                            "type": "doc.type.name",
+                            "view": "string"
+                        }
+                    ],
+                    "view": "string"
+                },
+                "file": "file:///Users/matt/Code/mooncats/./testdata/test.lua",
+                "finish": 150020,
+                "name": "foo",
+                "start": 150010,
+                "type": "doc.field"
+            }
+        ],
+        "name": "AClass",
+        "type": "type"
+    },
+    {
+        "defines": [
+            {
                 "extends": {
                     "finish": 700007,
                     "start": 700005,
