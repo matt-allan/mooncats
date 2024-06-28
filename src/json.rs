@@ -9,53 +9,46 @@ use nonempty::NonEmpty;
 use crate::location::{Location, Range};
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(tag = "type")]
-#[serde(rename_all = "lowercase")]
-pub enum Definition {
-    Type(TypeDefinition),
-    Variable(VarDefinition),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct TypeDefinition {
+pub struct Definition {
     pub name: String,
     pub desc: Option<String>,
+    #[serde(rename = "type")]
+    pub definition_type: DefinitionType,
     pub rawdesc: Option<String>,
-    pub defines: NonEmpty<TypeDefine>,
+    pub defines: NonEmpty<Define>,
+    #[serde(default)]
     pub fields: Vec<Field>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct VarDefinition {
-    pub name: String,
-    pub desc: Option<String>,
-    pub rawdesc: Option<String>,
-    pub defines: NonEmpty<VarDefine>,
+
+#[serde(rename_all = "lowercase")]
+pub enum DefinitionType {
+    Type,
+    Variable,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct TypeDefine {
+pub struct Define {
     #[serde(rename = "type")]
-    pub define_type: TypeDefineType,
+    pub define_type: DefineType,
     #[serde(flatten)]
     pub location: Location,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_extends")]
-    pub extends: Vec<TypeExtends>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct VarDefine {
-    #[serde(rename = "type")]
-    pub define_type: VarDefineType,
-    #[serde(flatten)]
-    pub location: Location,
-    pub extends: VarExtends,
+    pub extends: Vec<Extends>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum VarDefineType {
+pub enum DefineType {
+    #[serde(rename = "doc.alias")]
+    DocAlias,
+    #[serde(rename = "doc.class")]
+    DocClass,
+    #[serde(rename = "doc.enum")]
+    DocEnum,
+    TableField,
     SetGlobal,
     SetField,
     SetMethod,
@@ -63,27 +56,11 @@ pub enum VarDefineType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum TypeDefineType {
-    #[serde(rename = "doc.alias")]
-    DocAlias,
-    #[serde(rename = "doc.class")]
-    DocClass,
-    #[serde(rename = "doc.enum")]
-    DocEnum,
-    #[serde(rename = "doc.field")]
-    DocField,
-    #[serde(rename = "doc.type")]
-    DocType,
-    TableField,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct VarExtends {
+pub struct Extends {
     #[serde(flatten)]
     pub range: Range,
     #[serde(rename = "type")]
-    pub lua_type: VarType,
+    pub extends_type: ExtendsType,
     pub view: String,
     pub desc: Option<String>,
     pub rawdesc: Option<String>,
@@ -99,37 +76,19 @@ pub struct VarExtends {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct TypeExtends {
-    #[serde(flatten)]
-    pub range: Range,
-    #[serde(rename = "type")]
-    pub lua_type: TypeExtendsType,
-    pub view: String,
-    pub desc: Option<String>,
-    pub rawdesc: Option<String>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum VarType {
+pub enum ExtendsType {
+    Binary,
+    #[serde(rename = "doc.extends.name")]
+    DocExtendsName,
     #[serde(rename = "doc.type")]
     DocType,
-    Binary,
     Function,
     Integer,
     Nil,
     Number,
     String,
     Table,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum TypeExtendsType {
-    #[serde(rename = "doc.extends.name")]
-    DocExtendsName,
-    #[serde(rename = "doc.type")]
-    DocType,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -145,7 +104,7 @@ pub struct Field {
     #[serde(rename = "async")]
     pub is_async: Option<bool>,
     pub deprecated: Option<bool>,
-    pub extends: VarExtends,
+    pub extends: Extends,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -185,16 +144,9 @@ pub struct FuncArg {
 pub enum ArgType {
     #[serde(rename = "doc.type")]
     DocType,
-    Binary,
-    Function,
-    Integer,
     Local,
-    Nil,
-    Number,
     #[serde(rename = "self")]
     SelfType,
-    String,
-    Table,
     #[serde(rename = "...")]
     VarArg,
 }
@@ -203,32 +155,15 @@ pub enum ArgType {
 #[serde(rename_all = "lowercase")]
 pub struct FuncReturn {
     pub name: Option<String>,
-    #[serde(rename = "type")]
-    pub return_type: ReturnType,
     pub view: String,
     pub desc: Option<String>,
     pub rawdesc: Option<String>,
-}
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ReturnType {
-    #[serde(rename = "doc.type")]
-    DocType,
-    Binary,
-    Function,
-    #[serde(rename = "function.return")]
-    FuncReturn,
-    Local,
-    Nil,
-    Number,
-    String,
-    Table,
 }
 
 /// Implement the value of "extends", which may be missing, null, an array
 /// of maps, or a single map. We always deserialize into a vector of maps (which
 /// may be empty) for consistency.
-fn deserialize_extends<'de, D>(deserializer: D) -> Result<Vec<TypeExtends>, D::Error>
+fn deserialize_extends<'de, D>(deserializer: D) -> Result<Vec<Extends>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -236,7 +171,7 @@ where
 
     impl<'de> Visitor<'de> for ExtendData
     {
-        type Value = Vec<TypeExtends>;
+        type Value = Vec<Extends>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("array or map or null")

@@ -7,7 +7,7 @@
 
 use std::{error::Error, io::{self, Read}};
 
-use mooncats::json::Definition;
+use mooncats::{doctree::DocItem, json::Definition};
 
 extern crate mooncats;
 
@@ -19,16 +19,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     let docs: Vec<Definition> = serde_json::from_str(&buffer)?;
 
     for doc in docs.iter() {
-        // match doc {
-        //     Definition::Type(def) => {
-        //         if def.defines.head.extends.is_empty() {
-        //             println!("No extends: {}", def.name);
-        //             println!("{:#?}", def);
-        //         }
-        //     }
-        //     Definition::Variable(def) => {},
-        // }
-        println!("{:#?}", doc);
+        let item = DocItem::parse(&doc);
+
+        match item {
+            Ok(Some(item)) => {
+                println!("{:#?}", item);
+            },
+            Err(err) => {
+                if err.to_string() != "todo" {
+                    println!("{:#?}", err);
+                }
+            },
+            _ => {},
+        }
     }
 
     Ok(())
