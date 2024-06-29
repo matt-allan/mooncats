@@ -7,7 +7,7 @@ use crate::{
     }, location::{FileUri, Range}, passes::{parse_fields, parse_items}, workspace::Workspace
 };
 use itertools::Itertools;
-use log::{debug, warn};
+use log::debug;
 use serde::{Deserialize, Serialize};
 
 pub fn build_docs(workspace: Workspace) -> Result<DocTree> {
@@ -81,6 +81,16 @@ impl DocTree {
 
     pub fn add_item(&mut self, item: MetaFile) {
         self.0.push(item)
+    }
+}
+
+impl IntoIterator for DocTree {
+    type Item = MetaFile;
+
+    type IntoIter = std::vec::IntoIter<MetaFile>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

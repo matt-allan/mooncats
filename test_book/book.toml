@@ -1,0 +1,16 @@
+[book]
+authors = ["Matt Allan"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Test Book"
+
+[build]
+extra-watch-dirs = [
+  "library",
+]
+
+[preprocessor.luacats]
+# If you are using this book as an example don't add this "command" line. It's only
+# needed within this crate for development.
+command = "cargo run --manifest-path=../Cargo.toml"

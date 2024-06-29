@@ -1,8 +1,9 @@
-pub mod json;
-pub mod location;
-pub mod workspace;
-pub mod doctree;
+mod json;
+mod location;
+mod workspace;
+mod doctree;
 mod passes;
+pub mod mdbook;
 
 /// The error types used throughout this crate.
 pub mod errors {
