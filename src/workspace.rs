@@ -1,6 +1,6 @@
 //! The internal representation of a folder of docs on disk.
 
-use std::char::REPLACEMENT_CHARACTER;
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -8,7 +8,7 @@ use std::io::Read;
 use itertools::Itertools;
 use log::*;
 use serde::{Deserialize, Serialize};
-use url::Url;
+
 
 use crate::json::Definition;
 use crate::errors::*;
@@ -18,9 +18,9 @@ use crate::location::FileUri;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Workspace {
     /// Root URI for the workspace.
-    root: FileUri,
+    pub root: FileUri,
     /// All files within the workspace.
-    files: HashMap<FileUri,SourceFile>,
+    pub files: HashMap<FileUri,SourceFile>,
 }
 
 impl Workspace {

@@ -8,6 +8,12 @@ global_table = {}
 
 global_table.set_field = 123
 
+---Setting an index is useful I guess?
+global_table[1] = 456;
+
+---What about this?
+global_table[2] = function(x) end
+
 ---@param x integer
 ---@return integer
 function global_table:set_method(x) end

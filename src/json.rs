@@ -6,7 +6,7 @@ use std::{fmt, marker::PhantomData};
 use serde::{de::{self, MapAccess, Visitor}, Deserialize, Deserializer, Serialize};
 use nonempty::NonEmpty;
 
-use crate::{errors::{self, bail}, location::{Location, Range}};
+use crate::{location::{Location, Range}};
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Definition {

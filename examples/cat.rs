@@ -5,12 +5,12 @@
 //! cat testdata/doc.json | cargo run --example cat
 //! ```
 
-use std::{env, error::Error, io::{self, Read}, path::PathBuf};
+use std::{error::Error, io::{self, Read}, path::PathBuf};
 
-use anyhow::anyhow;
+
 use log::debug;
-use mooncats::{doctree::{build_docs, DocItem}, json::Definition, location::FileUri, workspace::{self, Workspace}};
-use url::Url;
+use mooncats::{doctree::{build_docs}, json::Definition, location::FileUri, workspace::{Workspace}};
+
 
 extern crate mooncats;
 
@@ -25,14 +25,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let docs: Vec<Definition> = serde_json::from_str(&buffer)?;
 
-    let path = env::current_dir()?;
+    let path = PathBuf::from("/Users/matt/Code/renoise-definitions/library");
 
     let mut workspace = Workspace::new(FileUri::try_from(path)?);
     workspace.load(docs)?;
 
-    let meta = build_docs(workspace)?;
+    let tree = build_docs(workspace)?;
 
-    println!("{:#?}", meta);
+    // println!("{:#?}", meta);
 
     Ok(())
 }

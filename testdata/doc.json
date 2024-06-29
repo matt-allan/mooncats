@@ -3,8 +3,8 @@
         "defines": [
             {
                 "file": "file:///Users/matt/Code/mooncats/./testdata/test.lua",
-                "finish": 140016,
-                "start": 140010,
+                "finish": 200016,
+                "start": 200010,
                 "type": "doc.class"
             }
         ],
@@ -14,36 +14,36 @@
                 "extends": {
                     "args": [
                         {
-                            "finish": 190008,
+                            "finish": 250008,
                             "name": "self",
-                            "start": 190008,
+                            "start": 250008,
                             "type": "self",
                             "view": "AClass"
                         }
                     ],
                     "desc": "Does stuff",
-                    "finish": 190030,
+                    "finish": 250030,
                     "rawdesc": "Does stuff",
-                    "start": 190000,
+                    "start": 250000,
                     "type": "function",
                     "view": "(method) AClass:do_stuff()"
                 },
                 "file": "file:///Users/matt/Code/mooncats/./testdata/test.lua",
-                "finish": 190024,
+                "finish": 250024,
                 "name": "do_stuff",
                 "rawdesc": "Does stuff",
-                "start": 190009,
+                "start": 250009,
                 "type": "setmethod"
             },
             {
                 "extends": {
-                    "finish": 150020,
-                    "start": 150014,
+                    "finish": 210020,
+                    "start": 210014,
                     "type": "doc.type",
                     "types": [
                         {
-                            "finish": 150020,
-                            "start": 150014,
+                            "finish": 210020,
+                            "start": 210014,
                             "type": "doc.type.name",
                             "view": "string"
                         }
@@ -51,9 +51,9 @@
                     "view": "string"
                 },
                 "file": "file:///Users/matt/Code/mooncats/./testdata/test.lua",
-                "finish": 150020,
+                "finish": 210020,
                 "name": "foo",
-                "start": 150010,
+                "start": 210010,
                 "type": "doc.field"
             }
         ],
@@ -1658,6 +1658,55 @@
         "defines": [
             {
                 "extends": {
+                    "finish": 110021,
+                    "start": 110018,
+                    "type": "integer",
+                    "view": "integer"
+                },
+                "file": "file:///Users/matt/Code/mooncats/./testdata/test.lua",
+                "finish": 110015,
+                "start": 110000,
+                "type": "setindex"
+            }
+        ],
+        "desc": "Setting an index is useful I guess?",
+        "name": "global_table.1",
+        "rawdesc": "Setting an index is useful I guess?",
+        "type": "variable"
+    },
+    {
+        "defines": [
+            {
+                "extends": {
+                    "args": [
+                        {
+                            "finish": 140028,
+                            "name": "x",
+                            "start": 140027,
+                            "type": "local",
+                            "view": "any"
+                        }
+                    ],
+                    "finish": 140033,
+                    "start": 140018,
+                    "type": "function",
+                    "view": "function (x: any)"
+                },
+                "file": "file:///Users/matt/Code/mooncats/./testdata/test.lua",
+                "finish": 140015,
+                "start": 140000,
+                "type": "setindex"
+            }
+        ],
+        "desc": "What about this?",
+        "name": "global_table.2",
+        "rawdesc": "What about this?",
+        "type": "variable"
+    },
+    {
+        "defines": [
+            {
+                "extends": {
                     "finish": 80028,
                     "start": 80025,
                     "type": "integer",
@@ -1678,34 +1727,34 @@
                 "extends": {
                     "args": [
                         {
-                            "finish": 120008,
+                            "finish": 180008,
                             "name": "self",
-                            "start": 120008,
+                            "start": 180008,
                             "type": "self",
                             "view": "table"
                         },
                         {
-                            "finish": 120034,
+                            "finish": 180034,
                             "name": "x",
-                            "start": 120033,
+                            "start": 180033,
                             "type": "local",
                             "view": "integer"
                         }
                     ],
-                    "finish": 120039,
+                    "finish": 180039,
                     "returns": [
                         {
                             "type": "function.return",
                             "view": "integer"
                         }
                     ],
-                    "start": 120000,
+                    "start": 180000,
                     "type": "function",
                     "view": "(method) global_table:set_method(x: integer)\n  -> integer"
                 },
                 "file": "file:///Users/matt/Code/mooncats/./testdata/test.lua",
-                "finish": 120032,
-                "start": 120009,
+                "finish": 180032,
+                "start": 180009,
                 "type": "setmethod"
             }
         ],

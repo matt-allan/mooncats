@@ -1,5 +1,5 @@
 //!Locations within source code files as line and character offsets.
-use std::{hash::Hash, path::PathBuf};
+use std::{fmt::Display, hash::Hash, path::PathBuf};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -37,10 +37,19 @@ impl FileUri {
         self.0.path_segments().unwrap().next_back().unwrap().to_string()
     }
 
+    pub fn dirname(&self) -> Option<String> {
+        let mut segments = self.0.path_segments().unwrap();
+
+        segments
+            .next_back() // drop filename
+            .and_then(|_| segments.next_back())
+            .map(|segment| segment.to_string())
+    }
+
     pub fn split_file_at_dot(&self) -> (String, String) {
         let name = self.file_name();
 
-        if let Some((stem, ext)) = name.rsplitn(2, ".").collect_tuple() {
+        if let Some((ext, stem)) = name.rsplitn(2, ".").collect_tuple() {
             return (stem.to_string(), ext.to_string())
         }
 
@@ -73,6 +82,10 @@ impl FileUri {
         n = (n-1).max(0); // don't count the last segment, which is the filename
 
         n
+    }
+
+    pub fn relative_depth(&self, base: &Self) -> usize {
+        self.depth() - base.depth()
     }
 }
 
@@ -108,6 +121,12 @@ impl TryFrom<Url> for FileUri {
     }
 }
 
+impl Display for FileUri {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_string())
+    }
+}
+
 /// A position within a document. 
 /// The position is packed into as a single u64 when encoding to JSON.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -118,6 +137,12 @@ pub struct Position {
     /// Character offset on a line in a document (zero-based).
     /// The offset counts UTF-16 code units.
     pub character: u64,
+}
+
+impl Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{},{}", self.line, self.character)
+    }
 }
 
 impl Position {
@@ -148,6 +173,12 @@ pub struct Range {
     start: Position,
     #[serde(alias = "finish")]
     end: Position,
+}
+
+impl Display for Range {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} - {}", self.start, self.end)
+    }
 }
 
 impl From<(Position, Position)> for Range {
@@ -204,6 +235,12 @@ pub struct Location {
 	pub file: FileUri,
     #[serde(flatten)]
 	pub range: Range,
+}
+
+impl Display for Location {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.file, self.range)
+    }
 }
 
 /// A span of text from within a file.
