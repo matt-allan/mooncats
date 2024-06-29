@@ -6,7 +6,7 @@ use std::{fmt, marker::PhantomData};
 use serde::{de::{self, MapAccess, Visitor}, Deserialize, Deserializer, Serialize};
 use nonempty::NonEmpty;
 
-use crate::location::{Location, Range};
+use crate::{errors::{self, bail}, location::{Location, Range}};
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Definition {
@@ -48,6 +48,8 @@ pub enum DefineType {
     DocClass,
     #[serde(rename = "doc.enum")]
     DocEnum,
+    #[serde(rename = "doc.field")]
+    DocField,
     TableField,
     SetGlobal,
     SetField,

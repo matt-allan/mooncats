@@ -5,34 +5,34 @@
 //! cat testdata/doc.json | cargo run --example cat
 //! ```
 
-use std::{error::Error, io::{self, Read}};
+use std::{env, error::Error, io::{self, Read}, path::PathBuf};
 
-use mooncats::{doctree::DocItem, json::Definition};
+use anyhow::anyhow;
+use log::debug;
+use mooncats::{doctree::{build_docs, DocItem}, json::Definition, location::FileUri, workspace::{self, Workspace}};
+use url::Url;
 
 extern crate mooncats;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::init();
+
+    debug!("Starting mooncats example");
+
     let mut buffer = String::new();
 
     io::stdin().read_to_string(&mut buffer)?;
 
     let docs: Vec<Definition> = serde_json::from_str(&buffer)?;
 
-    for doc in docs.iter() {
-        let item = DocItem::parse(&doc);
+    let path = env::current_dir()?;
 
-        match item {
-            Ok(Some(item)) => {
-                println!("{:#?}", item);
-            },
-            Err(err) => {
-                if err.to_string() != "todo" {
-                    println!("{:#?}", err);
-                }
-            },
-            _ => {},
-        }
-    }
+    let mut workspace = Workspace::new(FileUri::try_from(path)?);
+    workspace.load(docs)?;
+
+    let meta = build_docs(workspace)?;
+
+    println!("{:#?}", meta);
 
     Ok(())
 }

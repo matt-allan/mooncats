@@ -1,27 +1,26 @@
+use std::collections::HashMap;
+
 use crate::{
     errors::*, json::{
         self, ArgType, Define, DefineType, Definition, DefinitionType, Extends, ExtendsType,
         FieldType,
-    }, location::{Location, Range}, workspace::{self, Workspace}
+    }, location::{FileUri, Location, Range, Span}, workspace::{self, SourceFile, Workspace}
 };
+use itertools::Itertools;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 pub fn build_docs(workspace: Workspace) -> Result<Vec<MetaFile>> {
+    debug!("building docs");
+
     let mut meta_files: Vec<MetaFile> = Vec::new();
 
     for source_file in workspace.into_iter() {
         let mut meta_file = MetaFile::new(source_file.uri.clone());
 
-        for definition in source_file.definitions.iter() {
-            let item = DocItem::parse(definition)?;
-
-            if let Some(item) = item {
-                meta_file.add_item(item);
-            }
-        }
-
-        // TODO: second pass to set fields etc
+        parse_items(&mut meta_file, source_file)?;
+        parse_set_ops(&mut meta_file, source_file)?;
 
         meta_files.push(meta_file);
     }
@@ -31,28 +30,99 @@ pub fn build_docs(workspace: Workspace) -> Result<Vec<MetaFile>> {
     Ok(meta_files)
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+fn parse_items(meta_file: &mut MetaFile, source_file: &SourceFile) -> Result<()> {
+    for definition in source_file.definitions.iter() {
+        let item = DocItem::parse(definition)?;
+
+        if let Some(item) = item {
+            meta_file.add_item(item);
+        }
+    }
+
+    Ok(())
+}
+
+fn parse_set_ops(meta_file: &mut MetaFile, source_file: &SourceFile) -> Result<()> {
+    for definition in source_file.definitions.iter() {
+
+        if ! matches!(definition.defines.head.define_type, DefineType::SetField | DefineType::SetMethod | DefineType::SetIndex) {
+            return Ok(());
+        }
+        let extends = definition.defines.head.extends
+            .first()
+            .ok_or_else(|| anyhow!("Expected an extends for setfield at {:?}", definition.defines.head.location.range))?;
+        
+        let (table_name, field_name) = definition.name.splitn(2, ".").collect_tuple()
+            .ok_or_else(|| anyhow!("Invalid setfield name {}", definition.name))?;
+
+        let table = meta_file.items.get_mut(table_name)
+            .ok_or_else(|| anyhow!("setting field for missing table {}", table_name))?;
+
+        match definition.defines.head.define_type {
+            DefineType::SetField => {
+
+                match table.inner {
+                    DocItemEnum::Table(ref mut table) => {
+                        match extends.extends_type {
+                            ExtendsType::Binary |
+                            ExtendsType::Integer |
+                            ExtendsType::Nil |
+                            ExtendsType::Number |
+                            ExtendsType::String |
+                            ExtendsType::Table => {
+                                let field = Field {
+                                    name: field_name.to_string(),
+                                    description: definition.rawdesc.clone(),
+                                    lua_type: extends.view.clone(),
+                                };
+                                debug!("Adding field {:?}", field_name.to_string());
+                                table.add_field(field);
+                            },
+                            ExtendsType::Function => {
+                                let function = Function::parse(extends)?;
+
+                                table.add_function(field_name.to_string(), function);
+                            }
+                            _ => bail!("Unexpected setfield type {:?}", extends.extends_type)
+                        }
+                    },
+                    _ => bail!("Setting field for non-table"),
+                }
+            },
+            // TODO
+            DefineType::SetMethod => {
+                debug!("Set method: {}", field_name)
+            },
+            DefineType::SetIndex => {},
+            _ => continue,
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MetaFile {
-    pub uri: Url,
+    pub uri: FileUri,
     pub children: Vec<MetaFile>,
-    pub items: Vec<DocItem>,
+    pub items: HashMap<String,DocItem>,
 }
 
 impl MetaFile {
-    pub fn new(uri: Url) -> Self {
+    pub fn new(uri: FileUri) -> Self {
         Self {
             uri,
             children: Vec::new(),
-            items: Vec::new(),
+            items: HashMap::new(),
         }
     }
 
     pub fn add_item(&mut self, item: DocItem) {
-        self.items.push(item)
+        self.items.insert(item.name.clone(), item);
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct DocItem {
     name: String,
     description: Option<String>,
@@ -60,7 +130,7 @@ pub struct DocItem {
     inner: DocItemEnum,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DocItemEnum {
     Class(Class),
     Table(Table),
@@ -139,9 +209,10 @@ impl Class {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Table {
-    fields: Vec<Field>,
+    fields: HashMap<String,Field>,
+    functions: HashMap<String,Function>,
 }
 
 impl Table {
@@ -156,8 +227,17 @@ impl Table {
         ensure!(extends.extends_type == ExtendsType::Table);
 
         Ok(Table {
-            fields: Vec::new(), // added later
+            fields: HashMap::new(),
+            functions: HashMap::new(),
         })
+    }
+
+    pub fn add_field(&mut self, field: Field) {
+        self.fields.insert(field.name.clone(), field);
+    }
+
+    pub fn add_function(&mut self, name: String, function: Function) {
+        self.functions.insert(name, function);
     }
 }
 
@@ -193,7 +273,7 @@ impl Enum {
         let define = &definition.defines.head;
         ensure!(define.define_type == DefineType::DocEnum);
 
-        Ok({ Self { fields: Vec::new() } })
+        Ok(Self { fields: Vec::new() })
     }
 }
 
@@ -233,6 +313,8 @@ impl Global {
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Field {
+    name: String,
+    description: Option<String>,
     #[serde(rename = "type")]
     lua_type: String,
 }
@@ -246,6 +328,8 @@ impl Field {
         );
 
         Ok(Field {
+            name: field.name.clone(),
+            description: field.rawdesc.clone(),
             lua_type: field.extends.view.clone(),
         })
     }
