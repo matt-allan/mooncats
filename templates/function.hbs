@@ -1,0 +1,25 @@
+
+```lua
+{{view}}
+```
+
+{{#if description}}
+{{description}}
+
+{{/if}}
+{{#if arguments}}
+Arguments:
+
+{{#each arguments}}
+  - {{name}} `{{type}}`{{#if description}}: {{description}}{{/if}}
+{{/each}}
+
+{{/if}}
+{{#if returns}}
+Returns:
+
+{{#each returns}}
+  - {{name}} `{{type}}`{{#if description}}: {{description}}{{/if}}
+{{/each}}
+
+{{/if}}

@@ -3,8 +3,8 @@
 ---Integer, Bit Operations, provided by <http://bitop.luajit.org>
 ---
 ---[Documentation](http://bitop.luajit.org/api.html)
----@class bit
-local bit = {}
+---@class bitlib
+bit = {}
 
 ---Normalizes a number to the numeric range for bit operations and returns it.
 ---This function is usually not needed since all bit operations already normalize

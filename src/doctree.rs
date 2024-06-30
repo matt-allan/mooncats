@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
 use crate::{
-    errors::*, json::{
-        self, ArgType, DefineType, Definition, DefinitionType, Extends, ExtendsType,
-        FieldType,
-    }, location::{FileUri, Range}, passes::{parse_fields, parse_items}, workspace::Workspace
+    errors::*,
+    json::{
+        self, ArgType, DefineType, Definition, DefinitionType, Extends, ExtendsType, FieldType,
+    },
+    location::{FileUri, Range},
+    passes::{merge_class_tables, parse_items, parse_set_fields, parse_table_fields},
+    workspace::Workspace,
 };
 use itertools::Itertools;
 use log::debug;
@@ -19,7 +22,9 @@ pub fn build_docs(workspace: Workspace) -> Result<DocTree> {
         let mut meta_file = MetaFile::new(source_file.uri.clone());
 
         parse_items(&mut meta_file, source_file)?;
-        parse_fields(&mut meta_file, source_file)?;
+        parse_set_fields(&mut meta_file, source_file)?;
+        parse_table_fields(&mut meta_file, source_file)?;
+        merge_class_tables(&mut meta_file, source_file)?;
 
         meta_files.push(meta_file);
     }
@@ -30,17 +35,12 @@ pub fn build_docs(workspace: Workspace) -> Result<DocTree> {
 }
 
 fn build_tree(root: &FileUri, meta_files: Vec<MetaFile>) -> DocTree {
-    // println!("META:");
-    // meta_files.iter().map(|f| f.uri.clone()).for_each(|f| println!("{}", f));
-    let by_depth = meta_files
-        .into_iter()
-        .sorted_by(|a, b|
-            a.uri.relative_depth(root)
-                .cmp(&b.uri.relative_depth(root))
-                .then(
-                    a.uri.file_name()
-                        .cmp(&b.uri.file_name()))
-        );
+    let by_depth = meta_files.into_iter().sorted_by(|a, b| {
+        a.uri
+            .relative_depth(root)
+            .cmp(&b.uri.relative_depth(root))
+            .then(a.uri.file_name().cmp(&b.uri.file_name()))
+    });
     let mut tree = DocTree::new();
 
     for meta_file in by_depth {
@@ -48,12 +48,12 @@ fn build_tree(root: &FileUri, meta_files: Vec<MetaFile>) -> DocTree {
             tree.add_item(meta_file);
         } else {
             tree.for_each_mut(|file| {
-                if file.uri.depth() != meta_file.uri.depth() -1 {
-                    return
+                if file.uri.depth() != meta_file.uri.depth() - 1 {
+                    return;
                 }
 
                 if file.uri.file_stem() != meta_file.uri.dirname().unwrap_or_default() {
-                    return
+                    return;
                 }
 
                 file.children.push(meta_file.clone())
@@ -110,7 +110,7 @@ where
 pub struct MetaFile {
     pub uri: FileUri,
     pub children: Vec<MetaFile>,
-    pub items: HashMap<String,DocItem>,
+    pub items: HashMap<String, DocItem>,
 }
 
 impl MetaFile {
@@ -132,10 +132,12 @@ pub struct DocItem {
     pub name: String,
     pub description: Option<String>,
     pub range: Range,
+    #[serde(flatten)]
     pub inner: DocItemEnum,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind")]
 pub enum DocItemEnum {
     Class(Class),
     Table(Table),
@@ -182,7 +184,7 @@ impl DocItem {
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Default)]
 pub struct Class {
     pub fields: Vec<Field>,
-    pub methods: Vec<Method>,
+    pub methods: Vec<NamedFunction>,
 }
 
 impl Class {
@@ -194,21 +196,37 @@ impl Class {
             .fields
             .iter()
             .filter(|f| {
-                f.field_type == FieldType::DocField
-                    || f.field_type == FieldType::SetField
-                    || f.field_type == FieldType::SetMethod
+                (f.field_type == FieldType::DocField || f.field_type == FieldType::SetField)
+                    && f.extends.extends_type != ExtendsType::Function
             })
             .map(|f| Field::parse(f))
             .collect::<Result<Vec<Field>>>()?;
 
-        let methods: Vec<Method> = definition
+        let functions: Vec<NamedFunction> = definition
+            .fields
+            .iter()
+            .filter(|f| 
+                f.field_type == FieldType::SetField
+                    && f.extends.extends_type == ExtendsType::Function
+            ).map(|field| -> Result<NamedFunction> {
+                Ok(NamedFunction {
+                    name: field.name.clone(),
+                    function: Function::parse(&field.extends)?,
+                })
+            })
+            .collect::<Result<Vec<NamedFunction>>>()?;
+
+        let methods: Vec<NamedFunction> = definition
             .fields
             .iter()
             .filter(|f| f.field_type == FieldType::SetMethod)
-            .map(|f| Method::parse(f))
-            .collect::<Result<Vec<Method>>>()?;
+            .map(|f| NamedFunction::parse(f))
+            .collect::<Result<Vec<NamedFunction>>>()?;
 
-        let class = Self { fields, methods };
+        let class = Self {
+            fields,
+            methods: functions.into_iter().merge(methods).collect(),
+        };
 
         Ok(class)
     }
@@ -216,8 +234,9 @@ impl Class {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 pub struct Table {
-    pub fields: HashMap<String,Field>,
-    pub functions: HashMap<String,Function>,
+    pub view: String,
+    pub fields: HashMap<String, Field>,
+    pub functions: HashMap<String, NamedFunction>,
 }
 
 impl Table {
@@ -232,6 +251,7 @@ impl Table {
         ensure!(extends.extends_type == ExtendsType::Table);
 
         Ok(Table {
+            view: extends.view.clone(),
             fields: HashMap::new(),
             functions: HashMap::new(),
         })
@@ -241,8 +261,8 @@ impl Table {
         self.fields.insert(field.name.clone(), field);
     }
 
-    pub fn add_function(&mut self, name: String, function: Function) {
-        self.functions.insert(name, function);
+    pub fn add_function(&mut self, function: NamedFunction) {
+        self.functions.insert(function.name.clone(), function);
     }
 }
 
@@ -268,9 +288,9 @@ impl TypeAlias {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 pub struct Enum {
-    pub fields: Vec<Field>,
+    pub fields: HashMap<String,Field>,
 }
 
 impl Enum {
@@ -278,14 +298,25 @@ impl Enum {
         let define = &definition.defines.head;
         ensure!(define.define_type == DefineType::DocEnum);
 
-        Ok(Self { fields: Vec::new() })
+        Ok(Self::default())
+    }
+
+    pub fn add_field(&mut self, field: Field) {
+        self.fields.insert(field.name.clone(), field);
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(tag = "kind")]
 pub enum Global {
-    Primitive(String),
+    Primitive(PrimitiveGlobal),
     Function(Function),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct PrimitiveGlobal {
+    #[serde(rename = "type")]
+    primitive_type: String,
 }
 
 impl Global {
@@ -309,7 +340,7 @@ impl Global {
             | ExtendsType::Integer
             | ExtendsType::Nil
             | ExtendsType::Number
-            | ExtendsType::String => Global::Primitive(extends.view.clone()),
+            | ExtendsType::String => Global::Primitive(PrimitiveGlobal { primitive_type: extends.view.clone() }),
             ExtendsType::Function => Global::Function(Function::parse(extends)?),
             _ => bail!("unexpected extends type {:?}", extends.extends_type),
         })
@@ -326,11 +357,7 @@ pub struct Field {
 
 impl Field {
     pub fn parse(field: &json::Field) -> Result<Self> {
-        ensure!(
-            field.field_type == FieldType::DocField
-                || field.field_type == FieldType::SetField
-                || field.field_type == FieldType::SetMethod
-        );
+        ensure!(field.field_type == FieldType::DocField || field.field_type == FieldType::SetField);
 
         Ok(Field {
             name: field.name.clone(),
@@ -364,9 +391,14 @@ impl Function {
             .map(|ret| Return::parse(ret))
             .collect::<Result<Vec<Return>>>()?;
 
+        let mut view = extends.view.clone();
+        if let Some(stripped) = view.strip_prefix("(method) ") {
+            view = stripped.to_string();
+        }
+
         Ok(Self {
             description: extends.rawdesc.clone(),
-            view: extends.view.clone(),
+            view,
             arguments,
             returns,
         })
@@ -374,17 +406,18 @@ impl Function {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Method {
+pub struct NamedFunction {
     pub name: String,
+    #[serde(flatten)]
     pub function: Function,
 }
 
-impl Method {
+impl NamedFunction {
     pub fn parse(field: &json::Field) -> Result<Self> {
         ensure!(field.field_type == FieldType::SetMethod);
         ensure!(field.extends.extends_type == ExtendsType::Function);
 
-        Ok(Method {
+        Ok(NamedFunction {
             name: field.name.clone(),
             function: Function::parse(&field.extends)?,
         })
@@ -396,16 +429,16 @@ pub struct Argument {
     pub name: Option<String>,
     pub description: Option<String>,
     #[serde(rename = "type")]
-    pub arg_type: ArgumentType,
+    pub arg_type: String,
 }
 
 impl Argument {
     pub fn parse(arg: &json::FuncArg) -> Result<Self> {
         let arg_type = match arg.arg_type {
-            ArgType::DocType => ArgumentType::DocType(arg.view.clone()),
-            ArgType::Local => ArgumentType::Local(arg.view.clone()),
-            ArgType::SelfType => ArgumentType::SelfType,
-            ArgType::VarArg => ArgumentType::VarArg,
+            ArgType::DocType => arg.view.clone(),
+            ArgType::Local => arg.view.clone(),
+            ArgType::SelfType => "self".to_string(),
+            ArgType::VarArg => "...".to_string(),
         };
 
         Ok(Self {
@@ -414,16 +447,6 @@ impl Argument {
             arg_type,
         })
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub enum ArgumentType {
-    DocType(String),
-    Local(String),
-    #[serde(rename = "self")]
-    SelfType,
-    #[serde(rename = "...")]
-    VarArg,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]

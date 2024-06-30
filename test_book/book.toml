@@ -8,6 +8,7 @@ title = "Test Book"
 [build]
 extra-watch-dirs = [
   "library",
+  "../templates",
 ]
 
 [preprocessor.luacats]

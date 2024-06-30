@@ -1,6 +1,6 @@
 ---@meta
 
-HELLO_VERSION = "0.0.0"
+---The current app version.
 HELLO_VERSION = "0.0.1"
 
 ---Say hello.

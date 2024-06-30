@@ -1,0 +1,47 @@
+## {{titleCase name}}
+
+{{!-- Globals --}}
+{{#if globals}}
+## Globals
+
+{{#each globals}}
+  {{> global}}
+{{/each}}
+
+{{/if}}
+{{!-- Types --}}
+{{#if type_aliases}}
+## Types
+
+{{#each type_aliases}}
+  {{> type_alias}}
+{{/each}}
+
+{{/if}}
+{{!-- Enums --}}
+{{#if enums}}
+## Enums
+
+{{#each enums}}
+  {{> enum}}
+{{/each}}
+
+{{/if}}
+{{!-- Tables --}}
+{{#if tables}}
+## Tables
+
+{{#each tables}}
+  {{> table}}
+{{/each}}
+
+{{/if}}
+{{!-- Classes --}}
+{{#if classes}}
+## Classes
+
+{{#each classes}}
+  {{> class}}
+{{/each}}
+
+{{/if}}

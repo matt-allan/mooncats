@@ -1,0 +1,23 @@
+### {{name}}
+
+{{#if description}}
+{{description}}
+
+{{/if}}
+{{#if fields}}
+#### Fields
+
+{{#each fields}}
+  {{> field}}
+{{/each}}
+
+{{/if}}
+{{#if methods}}
+#### Methods
+
+{{#each methods}}
+  ##### {{name}}
+  {{> function}}
+{{/each}}
+
+{{/if}}

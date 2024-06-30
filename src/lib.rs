@@ -1,6 +1,7 @@
 mod json;
 mod location;
 mod workspace;
+mod markdown;
 mod doctree;
 mod passes;
 pub mod mdbook;

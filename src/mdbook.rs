@@ -6,7 +6,7 @@ use std::{env, fs::{self}, path::PathBuf, process::Command};
 use toml::value::Table;
 use log::*;
 
-use crate::{doctree::{build_docs, MetaFile}, errors::*, json::Definition, location::FileUri, workspace::Workspace};
+use crate::{doctree::{build_docs, MetaFile}, errors::*, json::Definition, location::FileUri, markdown::{self, MarkdownRenderer}, workspace::Workspace};
 
 /// Configuration for the preprocessor.
 #[derive(Debug, Default)]
@@ -89,11 +89,13 @@ impl Preprocessor for MoonCats {
 
         let doc_tree = build_docs(workspace)?;
 
+        let md = MarkdownRenderer::new();
+
         let part_title = config.part_title.unwrap_or("API Reference".into());
         book.push_item(BookItem::PartTitle(part_title));
 
         for (index, file) in doc_tree.into_iter().enumerate() {
-            let chapter = build_chapter(&root_path, &file, index, None)?;
+            let chapter = build_chapter(&md, &root_path, &file, index, None)?;
             book.push_item(BookItem::Chapter(chapter));
         }
 
@@ -105,9 +107,9 @@ impl Preprocessor for MoonCats {
     }
 }
 
-fn build_chapter(base: &PathBuf, file: &MetaFile, index: usize, parent: Option<&Chapter>) -> anyhow::Result<Chapter> {
+fn build_chapter(md: &MarkdownRenderer, base: &PathBuf, file: &MetaFile, index: usize, parent: Option<&Chapter>) -> anyhow::Result<Chapter> {
     let name = file.uri.file_stem(); 
-    let content = String::from("TODO"); // TODO
+    let content = md.render_meta(file)?;
     let md_path = file.uri.to_file_path()?
         .strip_prefix(base)?
         .with_extension("md");
@@ -142,7 +144,7 @@ fn build_chapter(base: &PathBuf, file: &MetaFile, index: usize, parent: Option<&
         .iter()
         .enumerate()
         .map(|(sub_index, sub_file)| -> anyhow::Result<BookItem> {
-            let chapter = build_chapter(base, sub_file, sub_index, Some(&chapter))?;
+            let chapter = build_chapter(md, base, sub_file, sub_index, Some(&chapter))?;
             Ok(BookItem::Chapter(chapter))
         })
         .collect::<anyhow::Result<Vec<BookItem>>>()?;

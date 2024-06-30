@@ -1,9 +1,9 @@
 use itertools::Itertools;
 use log::debug;
 
-use crate::{doctree::{DocItemEnum, Field, Function, MetaFile}, errors::*, json::{DefineType, ExtendsType}, workspace::SourceFile};
+use crate::{doctree::{DocItemEnum, Field, Function, MetaFile, NamedFunction}, errors::*, json::{DefineType, ExtendsType}, workspace::SourceFile};
 
-pub fn parse_fields(meta_file: &mut MetaFile, source_file: &SourceFile) -> Result<()> {
+pub fn parse_set_fields(meta_file: &mut MetaFile, source_file: &SourceFile) -> Result<()> {
     for definition in source_file.definitions.iter() {
         if ! matches!(definition.defines.head.define_type, DefineType::SetField | DefineType::SetIndex) {
             continue
@@ -43,18 +43,22 @@ pub fn parse_fields(meta_file: &mut MetaFile, source_file: &SourceFile) -> Resul
                             description: definition.rawdesc.clone(),
                             lua_type: extends.view.clone(),
                         };
-                        debug!("Adding field {:?}", field_name.to_string());
+                        debug!("Adding table field {:?}", field_name.to_string());
                         table.add_field(field);
                     },
                     ExtendsType::Function => {
-                        let function = Function::parse(extends)?;
+                        let method = NamedFunction {
+                            name: field_name.to_string(),
+                            function: Function::parse(extends)?,
+                        };
 
-                        table.add_function(field_name.to_string(), function);
+                        table.add_function(method);
                     }
                     _ => bail!("Unexpected setfield type {:?}", extends.extends_type)
                 }
             },
-            _ => bail!("Setting field for non-table"),
+            DocItemEnum::Class(_) => {}, // Ignore, already set via "fields" attribute
+            _ => bail!("Setting field {} for non-table {}", field_name, table.name),
         }
     }
 
